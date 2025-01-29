@@ -38,7 +38,7 @@ st.markdown("""
 def get_geolocation():
     return components.declare_component(
         "geolocation",
-        url="http://localhost:3001",  # Uses iframe-relay for direct communication
+        url="https://delhi-streetlight-map.streamlit.app",  # Uses iframe-relay for direct communication
     )
 
 # Single button implementation
