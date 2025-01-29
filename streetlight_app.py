@@ -44,16 +44,15 @@ def get_geolocation():
 # Single button implementation
 if st.button("Show Streetlight Map"):
     # Request location using improved component
-    geolocation = get_geolocation()
-    location_data = geolocation()
-    st.session_state.user_location = (28.666169, 77.302454) 
+    st.session_state.user_location = (28.666169, 77.302454)  # Hardcoded coordinates
+    st.session_state.show_map = True
     
-    if location_data and 'latitude' in location_data and 'longitude' in location_data:
-        st.session_state.user_location = (location_data['latitude'], location_data['longitude'])
-        st.session_state.show_map = True
-    else:
-        st.session_state.show_map = True
-        st.session_state.user_location = None
+    # if location_data and 'latitude' in location_data and 'longitude' in location_data:
+    #     st.session_state.user_location = (location_data['latitude'], location_data['longitude'])
+    #     st.session_state.show_map = True
+    # else:
+    #     st.session_state.show_map = True
+    #     st.session_state.user_location = None
 
 # Alternative reliable JavaScript implementation
 components.html("""
