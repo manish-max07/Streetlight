@@ -46,6 +46,7 @@ if st.button("Show Streetlight Map"):
     # Request location using improved component
     geolocation = get_geolocation()
     location_data = geolocation()
+    st.session_state.user_location = (28.666169, 77.302454) 
     
     if location_data and 'latitude' in location_data and 'longitude' in location_data:
         st.session_state.user_location = (location_data['latitude'], location_data['longitude'])
