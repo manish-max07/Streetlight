@@ -27,6 +27,12 @@ if 'user_location' not in st.session_state:
 
 # Main UI
 st.title("Street Light Status Map")
+st.markdown("""
+    **Map Legend:**
+    - 🟢 Green: Well-lit areas
+    - 🔴 Red: Poorly-lit areas
+    - 🔵 Blue: Your current location
+""")
 
 # Add permanent message handler component
 components.html("""
@@ -45,6 +51,10 @@ window.addEventListener("message", (event) => {
 
 # Single button implementation
 if st.button("Show Streetlight Map"):
+    # Reset session states
+    st.session_state.show_map = True
+    st.session_state.user_location = None
+    
     # Request location and trigger map show
     components.html("""
     <script>
@@ -105,6 +115,7 @@ if st.session_state.show_map:
             radius=8,
             color="green" if row.Status == "Well-lit" else "red",
             fill=True,
+            fill_opacity=0.7,
             popup=f"{row.Area}<br>{row.Status}"
         ).add_to(m)
     
