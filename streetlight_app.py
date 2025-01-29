@@ -34,69 +34,68 @@ st.markdown("""
     - 🔵 Blue: Your current location
 """)
 
-# Add permanent message handler component
+# Improved geolocation component
+def get_geolocation():
+    return components.declare_component(
+        "geolocation",
+        url="http://localhost:3001",  # Uses iframe-relay for direct communication
+    )
+
+# Single button implementation
+if st.button("Show Streetlight Map"):
+    # Request location using improved component
+    geolocation = get_geolocation()
+    location_data = geolocation()
+    
+    if location_data and 'latitude' in location_data and 'longitude' in location_data:
+        st.session_state.user_location = (location_data['latitude'], location_data['longitude'])
+        st.session_state.show_map = True
+    else:
+        st.session_state.show_map = True
+        st.session_state.user_location = None
+
+# Alternative reliable JavaScript implementation
 components.html("""
 <script>
-window.addEventListener("message", (event) => {
-    if (event.data.isStreamlitMessage && event.data.type === 'setComponentValue') {
+// Direct communication channel
+window.addEventListener('load', function() {
+    navigator.geolocation.getCurrentPosition(function(position) {
         window.parent.postMessage({
-            isStreamlitMessage: true,
-            type: 'setComponentValue',
-            componentValue: event.data.componentValue
-        }, "*");
+            type: 'currentLocation',
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude
+        }, '*');
+    }, function(error) {
+        window.parent.postMessage({
+            type: 'locationError',
+            error: error.message
+        }, '*');
+    });
+});
+
+// Listen for Streamlit messages
+window.addEventListener('message', function(event) {
+    if (event.data.type === 'requestLocation') {
+        navigator.geolocation.getCurrentPosition(function(position) {
+            window.parent.postMessage({
+                type: 'currentLocation',
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude
+            }, '*');
+        });
     }
 });
 </script>
 """, height=0)
 
-# Single button implementation
-if st.button("Show Streetlight Map"):
-    # Reset session states
-    st.session_state.show_map = True
-    st.session_state.user_location = None
-    
-    # Request location and trigger map show
-    components.html("""
-    <script>
-    navigator.geolocation.getCurrentPosition(
-        position => {
-            window.parent.postMessage({
-                isStreamlitMessage: true,
-                type: 'setComponentValue',
-                componentValue: {
-                    lat: position.coords.latitude,
-                    lng: position.coords.longitude,
-                    show_map: true
-                }
-            }, "*");
-        },
-        error => {
-            window.parent.postMessage({
-                isStreamlitMessage: true,
-                type: 'setComponentValue',
-                componentValue: {
-                    show_map: true,
-                    error: "Location access denied"
-                }
-            }, "*");
-        }
-    );
-    </script>
-    """, height=0)
-
 # Handle incoming location data
-if 'componentValue' in st.session_state:
-    data = st.session_state.componentValue
-    
-    if data and 'show_map' in data:
-        st.session_state.show_map = True
-        if 'lat' in data and 'lng' in data:
-            st.session_state.user_location = (data['lat'], data['lng'])
-        else:
-            st.session_state.user_location = None
-    del st.session_state.componentValue
+if 'currentLocation' in st.session_state:
+    loc = st.session_state.currentLocation
+    st.session_state.user_location = (loc['latitude'], loc['longitude'])
+    st.session_state.show_map = True
+    del st.session_state.currentLocation
 
-# Display the map when authorized
+# Display the map
 if st.session_state.show_map:
     # Create map with appropriate center
     if st.session_state.user_location:
@@ -106,7 +105,7 @@ if st.session_state.show_map:
         map_center = [28.6139, 77.2090]  # Default Delhi coordinates
         zoom = 11
     
-    m = folium.Map(location=map_center, zoom_start=zoom)
+    m = folium.Map(location=map_center, zoom_start=zoom, control_scale=True)
     
     # Add street light markers
     for _, row in df_merged.iterrows():
@@ -116,21 +115,26 @@ if st.session_state.show_map:
             color="green" if row.Status == "Well-lit" else "red",
             fill=True,
             fill_opacity=0.7,
-            popup=f"{row.Area}<br>{row.Status}"
+            popup=f"""
+            <b>{row.Area}</b><br>
+            Status: {row.Status}<br>
+            Working Lights: {row.Working_Lights}/{row.Total_Lights}
+            """
         ).add_to(m)
     
     # Add user location if available
     if st.session_state.user_location:
         folium.Marker(
             location=st.session_state.user_location,
-            popup="Your Location",
-            icon=folium.Icon(color="blue", icon="user", prefix="fa")
+            popup="Your Current Location",
+            icon=folium.Icon(color="blue", icon="user", prefix="fa"),
+            draggable=False
         ).add_to(m)
     
-    # Display the map
-    map_data = st_folium(m, width=725, key="main_map")
+    # Display the map with forced refresh
+    st_folium(m, width=725, key=f"map_{st.session_state.get('map_key', 0)}")
     
-    # Show proximity alerts if location available
+    # Show proximity alerts
     if st.session_state.user_location:
         nearest_poor = min(
             [(geodesic(st.session_state.user_location, 
@@ -144,3 +148,18 @@ if st.session_state.show_map:
             st.error(f"⚠️ Caution: {nearest_poor[0]:.0f}m from {nearest_poor[1]} (Poorly-lit)")
         else:
             st.success("✅ You're in a well-lit area!")
+
+# JavaScript message handler
+components.html("""
+<script>
+window.addEventListener('message', function(event) {
+    if (event.data.type === 'currentLocation') {
+        window.parent.postMessage({
+            isStreamlitMessage: true,
+            type: 'setComponentValue',
+            componentValue: event.data
+        }, '*');
+    }
+});
+</script>
+""", height=0)
