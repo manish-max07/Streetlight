@@ -23,7 +23,7 @@ df = df.merge(area_stats[["Area", "Status"]], on="Area")
 if 'show_map' not in st.session_state:
     st.session_state.show_map = False
 if 'user_location' not in st.session_state:
-    st.session_state.user_location = (28.6107595, 77.2207131)  # Hardcoded coordinates
+    st.session_state.user_location = (28.7496585, 77.111702)  # Hardcoded coordinates
 
 # Main UI
 st.title("Street Light Status Map")
